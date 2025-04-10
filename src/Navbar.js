@@ -49,7 +49,7 @@ import Modallogin from "./Modallogin";
 import Searchbar from "./SearchComponents/Searchbar";
 import MapComponent from "./MapComponent";
 import StaticMap from "./components/StaticMap";
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 
 export default function Navbar({ auth, setAuth }) {
