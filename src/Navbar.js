@@ -49,6 +49,8 @@ import Modallogin from "./Modallogin";
 import Searchbar from "./SearchComponents/Searchbar";
 import MapComponent from "./MapComponent";
 import StaticMap from "./components/StaticMap";
+import { useState } from "react";
+
 
 export default function Navbar({ auth, setAuth }) {
   const [showNavNoTogglerSecond, setShowNavNoTogglerSecond] = useState(false);
