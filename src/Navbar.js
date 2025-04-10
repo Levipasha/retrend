@@ -52,6 +52,9 @@ import StaticMap from "./components/StaticMap";
 
 export default function Navbar({ auth, setAuth }) {
   const [showNavNoTogglerSecond, setShowNavNoTogglerSecond] = useState(false);
+  const [products, setProducts] = useState([]);
+const [loading, setLoading] = useState(false);
+
 
   // for register and login
   const [staticModal, setStaticModal] = useState(false);
