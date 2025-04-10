@@ -1,27 +1,25 @@
 import React, { useState } from 'react';
 
 const StaticMap = ({ latitude, longitude, width = 400, height = 300, zoom = 15 }) => {
+  // ✅ Moved hook to the top before any conditional return
+  const [imageFailed, setImageFailed] = useState(false);
+
   // If no coordinates are provided, don't render anything
   if (!latitude || !longitude) {
     return null;
   }
-  
-  // State to track if the OpenStreetMap static image fails to load
-  const [imageFailed, setImageFailed] = useState(false);
-  
-  // Using OpenStreetMap static image provider
+
+  // OpenStreetMap static image
   const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}&zoom=${zoom}&size=${width}x${height}&markers=${latitude},${longitude},red`;
-  
+
   // Google Maps static image as fallback
-  // Note: For production, you would need to use your own API key
   const googleMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=${zoom}&size=${width}x${height}&markers=color:red%7C${latitude},${longitude}`;
-  
-  // Handle image load error
+
   const handleImageError = () => {
     console.log("OpenStreetMap static image failed to load, switching to fallback");
     setImageFailed(true);
   };
-  
+
   return (
     <div className="static-map-container">
       {!imageFailed ? (
@@ -39,7 +37,6 @@ const StaticMap = ({ latitude, longitude, width = 400, height = 300, zoom = 15 }
           onError={handleImageError}
         />
       ) : (
-        // Fallback to a simple placeholder with coordinates
         <div 
           style={{ 
             width: '100%', 
@@ -81,4 +78,4 @@ const StaticMap = ({ latitude, longitude, width = 400, height = 300, zoom = 15 }
   );
 };
 
-export default StaticMap; 
+export default StaticMap;
