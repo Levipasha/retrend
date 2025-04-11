@@ -390,9 +390,8 @@ export default function Navbar({ auth, setAuth }) {
                                   <Text fontSize="sm" color="gray.500">{loc.state}</Text>
                                 </Box>
                               </Flex>
-                            </Flex>
-                          </ListItem>
-                        ))}
+                            </ListItem>
+                          ))}
                         </>
                       )}
                     </List>
