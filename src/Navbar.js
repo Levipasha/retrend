@@ -13,21 +13,18 @@ import {
   List,
   ListItem,
   Flex,
+  IconButton,
+  Avatar,
 } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function Navbar({ auth, setAuth }) {
+  const navigate = useNavigate();
   const [showNavNoTogglerSecond, setShowNavNoTogglerSecond] = useState(false);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const [staticModal, setStaticModal] = useState(false);
-  const toggleShow = () => setStaticModal(!staticModal);
-
   const [wishlistItems, setWishlistItems] = useState([]);
   const [currentLocation, setCurrentLocation] = useState("India");
   const [coordinates, setCoordinates] = useState(null);
-
   const [searchQuery, setSearchQuery] = useState("");
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -52,13 +49,9 @@ export default function Navbar({ auth, setAuth }) {
   }, [auth]);
 
   function handleLogout() {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authemail");
-    localStorage.removeItem("authname");
-    localStorage.removeItem("authpicture");
-    localStorage.removeItem("authphone");
-    window.location.href = "/";
+    localStorage.clear();
     setAuth(false);
+    window.location.href = "/";
   }
 
   const fetchLocationName = async (lat, lng) => {
@@ -66,14 +59,8 @@ export default function Navbar({ auth, setAuth }) {
       const response = await axios.get(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
       );
-      const addressParts = response.data.address;
-      const address = {
-        area: addressParts.suburb || addressParts.neighbourhood || addressParts.residential,
-        city: addressParts.city || addressParts.town || addressParts.municipality,
-        state: addressParts.state,
-        postcode: addressParts.postcode
-      };
-      const displayName = address.area || address.city || address.state;
+      const address = response.data.address;
+      const displayName = address.suburb || address.city || address.state || "India";
       setCurrentLocation(displayName);
       localStorage.setItem("userLocation", JSON.stringify({
         name: displayName,
@@ -96,12 +83,9 @@ export default function Navbar({ auth, setAuth }) {
         `https://nominatim.openstreetmap.org/search?q=${query}&format=json&addressdetails=1&limit=5&countrycodes=in`
       );
       const suggestions = response.data.map((location) => ({
-        area: location.address.suburb || location.address.neighbourhood || location.address.residential,
-        city: location.address.city || location.address.town || location.address.municipality,
-        state: location.address.state,
         displayName: [
-          location.address.suburb || location.address.neighbourhood || location.address.residential,
-          location.address.city || location.address.town || location.address.municipality,
+          location.address.suburb || location.address.neighbourhood,
+          location.address.city || location.address.town,
           location.address.state
         ].filter(Boolean).join(", "),
         coordinates: {
@@ -111,40 +95,31 @@ export default function Navbar({ auth, setAuth }) {
       }));
       setLocationSuggestions(suggestions);
     } catch (error) {
-      console.error("Error fetching location suggestions:", error);
+      console.error("Error fetching suggestions:", error);
     }
   };
 
-  const handleSearchInput = (event) => {
-    const value = event.target.value;
-    setSearchQuery(value);
+  const handleSearchInput = (e) => {
+    setSearchQuery(e.target.value);
     setIsSearching(true);
-    fetchLocationSuggestions(value);
+    fetchLocationSuggestions(e.target.value);
   };
 
   const handleSuggestionSelect = (suggestion) => {
-    const displayName = [suggestion.area, suggestion.city, suggestion.state]
-      .filter(Boolean)
-      .join(", ");
-    setCurrentLocation(displayName);
-    setSearchQuery(displayName);
+    setCurrentLocation(suggestion.displayName);
+    setSearchQuery(suggestion.displayName);
     setIsSearching(false);
     setLocationSuggestions([]);
     localStorage.setItem("userLocation", JSON.stringify({
-      name: displayName,
-      address: {
-        area: suggestion.area,
-        city: suggestion.city,
-        state: suggestion.state
-      },
+      name: suggestion.displayName,
       coordinates: suggestion.coordinates
     }));
     window.dispatchEvent(new Event("locationChanged"));
   };
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
         setIsSearching(false);
       }
     };
@@ -152,47 +127,10 @@ export default function Navbar({ auth, setAuth }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const getProducts = async () => {
-    try {
-      const savedLocation = localStorage.getItem("userLocation");
-      const locationData = savedLocation ? JSON.parse(savedLocation) : null;
-      const response = await axios.get("https://retrand4.onrender.com/getProducts", {
-        params: {
-          location: locationData?.name || "India",
-        },
-      });
-      setProducts(response.data);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
-
-  const LocationButton = () => (
-    <Button
-      onClick={() => setIsSearching(true)}
-      leftIcon={<MDBIcon fas icon="map-marker-alt" />}
-      bg="white"
-      color="black"
-      _hover={{ bg: "gray.50" }}
-      borderRadius="md"
-      width="250px"
-      display="flex"
-      justifyContent="flex-start"
-      overflow="hidden"
-      textOverflow="ellipsis"
-      whiteSpace="nowrap"
-      border="1px solid"
-      borderColor="gray.200"
-    >
-      {currentLocation}
-    </Button>
-  );
-
   return (
     <MDBNavbar expand="lg" style={{ backgroundColor: "rgba(235, 238, 239, 1)" }}>
-      <MDBContainer fluid>
+      <MDBContainer fluid className="d-flex align-items-center justify-content-between">
+        {/* LOGO */}
         <MDBNavbarBrand href="/" className="d-flex flex-column">
           <span style={{ fontSize: "24px", fontWeight: "bold", color: "#333" }}>
             RETREND
@@ -202,87 +140,136 @@ export default function Navbar({ auth, setAuth }) {
           </span>
         </MDBNavbarBrand>
 
-        <div className="d-flex align-items-center" style={{ marginLeft: "20px" }} ref={searchRef}>
-          <Box position="relative" width="250px">
-            <LocationButton />
-            {isSearching && (
-              <Box
-                position="absolute"
-                top="100%"
-                left="0"
-                right="0"
-                bg="white"
-                boxShadow="lg"
-                borderRadius="md"
-                zIndex={1000}
-                border="1px solid"
-                borderColor="gray.200"
-                mt={2}
-              >
-                <Input
-                  placeholder="Search city, area or locality"
-                  value={searchQuery}
-                  onChange={handleSearchInput}
-                  border="none"
-                  borderBottom="1px solid"
-                  borderColor="gray.200"
-                  borderRadius="0"
-                  p={4}
-                  autoFocus
-                />
+        {/* LOCATION */}
+        <Box position="relative" width="250px" ref={searchRef}>
+          <Button
+            onClick={() => setIsSearching(true)}
+            leftIcon={<MDBIcon fas icon="map-marker-alt" />}
+            bg="white"
+            color="black"
+            _hover={{ bg: "gray.50" }}
+            borderRadius="md"
+            width="100%"
+            justifyContent="flex-start"
+            border="1px solid"
+            borderColor="gray.200"
+          >
+            {currentLocation}
+          </Button>
 
-                <Box maxH="400px" overflowY="auto">
-                  <List>
+          {isSearching && (
+            <Box
+              position="absolute"
+              top="100%"
+              left="0"
+              right="0"
+              bg="white"
+              boxShadow="lg"
+              borderRadius="md"
+              zIndex={1000}
+              mt={2}
+            >
+              <Input
+                placeholder="Search location"
+                value={searchQuery}
+                onChange={handleSearchInput}
+                border="none"
+                borderBottom="1px solid"
+                borderColor="gray.200"
+                p={4}
+                autoFocus
+              />
+              <Box maxH="300px" overflowY="auto">
+                <List>
+                  <ListItem
+                    p={3}
+                    cursor="pointer"
+                    _hover={{ bg: "gray.100" }}
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (position) => {
+                            const { latitude, longitude } = position.coords;
+                            setCoordinates({ lat: latitude, lng: longitude });
+                            fetchLocationName(latitude, longitude);
+                          },
+                          () => {
+                            setCurrentLocation("India");
+                          }
+                        );
+                      }
+                      setIsSearching(false);
+                    }}
+                  >
+                    <Flex align="center">
+                      <MDBIcon fas icon="location-arrow" className="me-2" />
+                      Use current location
+                    </Flex>
+                  </ListItem>
+                  {locationSuggestions.map((s, idx) => (
                     <ListItem
+                      key={idx}
                       p={3}
                       cursor="pointer"
                       _hover={{ bg: "gray.100" }}
-                      onClick={() => {
-                        if (navigator.geolocation) {
-                          setCurrentLocation("Detecting location...");
-                          navigator.geolocation.getCurrentPosition(
-                            (position) => {
-                              const { latitude, longitude } = position.coords;
-                              setCoordinates({ lat: latitude, lng: longitude });
-                              fetchLocationName(latitude, longitude);
-                            },
-                            (error) => {
-                              console.error("Error:", error);
-                              setCurrentLocation("India");
-                              localStorage.setItem("userLocation", JSON.stringify({
-                                name: "India",
-                                coordinates: null,
-                              }));
-                            }
-                          );
-                        }
-                        setIsSearching(false);
-                      }}
+                      onClick={() => handleSuggestionSelect(s)}
                     >
-                      <Flex align="center" color="gray.700">
-                        <MDBIcon fas icon="location-arrow" className="me-2" />
-                        <Text fontWeight="500">Use current location</Text>
-                      </Flex>
+                      {s.displayName}
                     </ListItem>
-
-                    {locationSuggestions.map((suggestion, index) => (
-                      <ListItem
-                        key={index}
-                        p={3}
-                        cursor="pointer"
-                        bg={currentLocation === suggestion.displayName ? "gray.50" : "white"}
-                        _hover={{ bg: "gray.100" }}
-                        onClick={() => handleSuggestionSelect(suggestion)}
-                      >
-                        {suggestion.displayName}
-                      </ListItem>
-                    ))}
-                  </List>
-                </Box>
+                  ))}
+                </List>
               </Box>
-            )}
-          </Box>
-        </div>
+            </Box>
+          )}
+        </Box>
+
+        {/* SEARCH BAR */}
+        <Input
+          placeholder="Search products..."
+          width="300px"
+          ml={4}
+          borderRadius="md"
+          borderColor="gray.300"
+        />
+
+        {/* SELL BUTTON */}
+        <Button
+          onClick={() => navigate("/post")}
+          colorScheme="blue"
+          ml={4}
+        >
+          + Sell
+        </Button>
+
+        {/* LOGIN / LOGOUT */}
+        {auth ? (
+          <Flex align="center" ml={4} gap={2}>
+            <Avatar
+              src={localStorage.getItem("authpicture")}
+              name={localStorage.getItem("authname")}
+              size="sm"
+            />
+            <Button onClick={handleLogout} variant="outline" size="sm">
+              Logout
+            </Button>
+          </Flex>
+        ) : (
+          <Button
+            onClick={() => navigate("/login")}
+            variant="outline"
+            ml={4}
+          >
+            Login
+          </Button>
+        )}
+
+        {/* WISHLIST */}
+        <IconButton
+          icon={<MDBIcon fas icon="heart" />}
+          onClick={() => navigate("/wishlist")}
+          variant="ghost"
+          ml={2}
+        />
       </MDBContainer>
     </MDBNavbar>
   );
