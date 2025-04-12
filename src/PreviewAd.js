@@ -195,8 +195,8 @@ const PreviewAd = ({auth}) => {
           },
           prefill: {
             name: data?.owner || "User",
-            email: localStorage.getItem("userEmail") || "",
-            contact: "" // Empty string allows user to enter their number
+            email: localStorage.getItem("authemail") || "",
+            contact: localStorage.getItem("authphone") || "" // Empty string allows user to enter their number
           },
           notes: {
             productId: id,
