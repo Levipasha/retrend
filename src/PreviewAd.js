@@ -262,101 +262,145 @@ const PreviewAd = ({auth}) => {
         key: keyId,
         amount: amount,
         currency: currency,
-        name: "OLX Clone",
+        name: "Retrend",
         description: "Product Promotion Payment",
         order_id: orderId,
-        handler: async function (response) {
+        // Add this function near your other functions
+        const refreshProductData = async () => {
           try {
-            console.log("Payment successful, verifying payment:", response);
-            
-            // Verify payment with server
-            const verifyResponse = await axios.post(
-              "https://retrand4.onrender.com/verify-promotion-payment",
-              {
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                productId: id,
-              },
+            console.log("Refreshing product data...");
+            const response = await axios.post(
+              `https://retrand4.onrender.com/previewad/${id}`,
+              {},
               {
                 headers: {
                   Authorization: `Bearer ${authToken}`,
                 },
               }
             );
-            
-            console.log("Payment verified successfully:", verifyResponse.data);
-            
-            // Update local state
-            setData({
-              ...data,
-              isPromoted: true,
-              promotionStartDate: new Date(),
-              promotionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            });
-            
-            toast({
-              title: "Promotion Successful",
-              description: "Your product will be displayed at the top with a 'Best One' label for 30 days.",
-              status: "success",
-              duration: 5000,
-              isClosable: true,
-            });
-            
-            onClose();
+            console.log("Refreshed product data:", response.data);
+            setData(response.data.product);
           } catch (error) {
-            console.error("Payment verification error:", error);
-            
-            let errorMessage = "There was an issue verifying your payment. Please contact support.";
-            
-            if (error.response && error.response.data && error.response.data.message) {
-              errorMessage = error.response.data.message;
+            console.error("Error refreshing product data:", error);
+          }
+        };
+        
+        // Then call this function after payment verification
+        // Add this line after the payment verification in the handler function:
+        await refreshProductData();
+        
+        const { orderId, amount, currency, keyId } = orderResponse.data;
+        
+        // Configure Razorpay options
+        const options = {
+          key: keyId,
+          amount: amount,
+          currency: currency,
+          name: "OLX Clone",
+          description: "Product Promotion Payment",
+          order_id: orderId,
+          // In the handler function for the payment
+          handler: async function (response) {
+            try {
+              console.log("Payment successful, verifying payment:", response);
+              
+              // Verify payment with server
+              const verifyResponse = await axios.post(
+                "https://retrand4.onrender.com/verify-promotion-payment",
+                {
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  productId: id,
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${authToken}`,
+                  },
+                }
+              );
+              
+              console.log("Payment verified successfully:", verifyResponse.data);
+              
+              // Force fetch the updated product data from server
+              const updatedProductResponse = await axios.post(
+                `https://retrand4.onrender.com/previewad/${id}`,
+                {},
+                {
+                  headers: {
+                    Authorization: `Bearer ${authToken}`,
+                  },
+                }
+              );
+              
+              console.log("Updated product data:", updatedProductResponse.data);
+              
+              // Update local state with fresh data from server
+              setData(updatedProductResponse.data.product);
+              
+              toast({
+                title: "Promotion Successful",
+                description: "Your product will be displayed at the top with a 'Best One' label for 30 days.",
+                status: "success",
+                duration: 5000,
+                isClosable: true,
+              });
+              
+              onClose();
+            } catch (error) {
+              console.error("Payment verification error:", error);
+              
+              let errorMessage = "There was an issue verifying your payment. Please contact support.";
+              
+              if (error.response && error.response.data && error.response.data.message) {
+                errorMessage = error.response.data.message;
+              }
+              
+              toast({
+                title: "Payment Verification Failed",
+                description: errorMessage,
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+              });
             }
-            
-            toast({
-              title: "Payment Verification Failed",
-              description: errorMessage,
-              status: "error",
-              duration: 5000,
-              isClosable: true,
-            });
+          },
+          prefill: {
+            name: "User",
+            email: localStorage.getItem("userEmail") || "",
+          },
+          theme: {
+            color: "#3399cc",
+          },
+          modal: {
+            ondismiss: function() {
+              console.log("Payment modal dismissed");
+              toast({
+                title: "Payment Cancelled",
+                description: "You cancelled the payment process.",
+                status: "info",
+                duration: 3000,
+                isClosable: true,
+              });
+            }
           }
-        },
-        prefill: {
-          name: "User",
-          email: localStorage.getItem("userEmail") || "",
-        },
-        theme: {
-          color: "#3399cc",
-        },
-        modal: {
-          ondismiss: function() {
-            console.log("Payment modal dismissed");
-            toast({
-              title: "Payment Cancelled",
-              description: "You cancelled the payment process.",
-              status: "info",
-              duration: 3000,
-              isClosable: true,
-            });
-          }
+        };
+        
+        console.log("Initializing Razorpay with options:", { ...options, key: options.key.substring(0, 8) + '...' });
+        
+        // Initialize Razorpay
+        try {
+          await initializeRazorpay(options);
+        } catch (error) {
+          console.error("Razorpay initialization error:", error);
+          toast({
+            title: "Payment Failed",
+            description: "Could not initialize payment gateway. Please try again later.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
         }
-      };
-      
-      console.log("Initializing Razorpay with options:", { ...options, key: options.key.substring(0, 8) + '...' });
-      
-      // Initialize Razorpay
-      try {
-        await initializeRazorpay(options);
-      } catch (error) {
-        console.error("Razorpay initialization error:", error);
-        toast({
-          title: "Payment Failed",
-          description: "Could not initialize payment gateway. Please try again later.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
       }
       
     } catch (error) {
@@ -575,7 +619,7 @@ const PreviewAd = ({auth}) => {
                     <CurrencyRupeeTwoToneIcon />
                     {data.price}
                     {data.isPromoted && (
-                      <Badge colorScheme="green" ml={2}>
+                      <Badge colorScheme="green" ml={2} fontSize="0.8em" p={1}>
                         Best One
                       </Badge>
                     )}
